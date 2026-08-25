@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:imc/screens/widgets/card_imc.dart';
 
 import '../alerts/alerts.dart';
 import '../models/imc.dart';
@@ -17,6 +18,9 @@ class _ImcScreenState extends State<ImcScreen> {
   final _pesoController = TextEditingController();
   final _alturaController = TextEditingController();
 
+  // Lista que armazenará o histórico das consultas
+  final List<IMC> _historico = [];
+
   @override
   void dispose() {
     _pesoController.dispose();
@@ -25,30 +29,52 @@ class _ImcScreenState extends State<ImcScreen> {
   }
 
   void _calcularImc() {
-    //Verifica se campos foram preenchidos corretamente
+    // Verifica se os campos foram preenchidos corretamente
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    final peso = double.parse(_pesoController.text.replaceAll(',', '.'),);
+    final peso = double.parse(
+      _pesoController.text.replaceAll(',', '.'),
+    );
 
-    final altura = double.parse(_alturaController.text.replaceAll(',', '.'),);
+    final altura = double.parse(
+      _alturaController.text.replaceAll(',', '.'),
+    );
 
-    final imc = IMC(altura: altura, peso: peso);
-    mostrarAlertImc(context:context, imc: imc);
+    final imc = IMC(
+      altura: altura,
+      peso: peso,
+    );
+
+    // Atualiza a tela adicionando a nova consulta ao histórico
+    setState(() {
+      _historico.add(imc);
+    });
+
+    // Exibe o resultado
+    mostrarAlertImc(
+      context: context,
+      imc: imc,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Obtém as dimensões da tela
+    final tamanhoTela = MediaQuery.sizeOf(context);
+    final paddingTela = tamanhoTela.width * 0.04;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Calculadora de IMC'),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(paddingTela, paddingTela, paddingTela, 0),
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextFormField(
                 controller: _pesoController,
@@ -119,6 +145,10 @@ class _ImcScreenState extends State<ImcScreen> {
                     return 'Informe um valor numérico';
                   }
 
+                  if (altura <= 0) {
+                    return 'Informe uma altura válida';
+                  }
+
                   return null;
                 },
               ),
@@ -130,6 +160,28 @@ class _ImcScreenState extends State<ImcScreen> {
                 child: ElevatedButton(
                   onPressed: _calcularImc,
                   child: const Text('Calcular IMC'),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              if(_historico.isNotEmpty)
+                Text(
+                  'Histórico de consultas',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+
+              const SizedBox(height: 8),
+
+              // O histórico ocupa o espaço restante
+              Expanded(
+                child: ListView.builder(
+                  padding: EdgeInsets.only(bottom: paddingTela),
+                  // Representa a quantidade de itens a ser listada
+                  itemCount: _historico.length,
+                  // Mostra os registros mais recentes primeiro
+                  itemBuilder: (context, index)=>
+                      CardIMC(imc: _historico[index]),
                 ),
               ),
             ],

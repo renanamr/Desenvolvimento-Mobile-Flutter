@@ -367,3 +367,323 @@ void mostrarAlertImc({
   );
 }
 ```
+#### Verificando andamento...
+Para verificar se seu projeto está igual a este, você pode usar o comando **git** abaixo:
+```bash
+git checkout 8f82457
+```
+
+## Parte 2 - Estruturas responsivas e uso do ListView
+Itens trabalhados nessa parte do projeto:
+* **`MediaQuery`** → obter o tamanho disponível da tela e adaptar espaçamentos/tamanhos.
+* **`Expanded`** → fazer o histórico ocupar o espaço restante da tela.
+* **`ListView`** → apresentar uma lista rolável das consultas realizadas.
+
+### 1.Modificando a Screen — `imc_screen.dart`
+
+A principal alteração ficará aqui.
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:imc/screens/widgets/card_imc.dart';
+
+import '../alerts/alerts.dart';
+import '../models/imc.dart';
+
+class ImcScreen extends StatefulWidget {
+  const ImcScreen({super.key});
+
+  @override
+  State<ImcScreen> createState() => _ImcScreenState();
+}
+
+class _ImcScreenState extends State<ImcScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  final _pesoController = TextEditingController();
+  final _alturaController = TextEditingController();
+
+  // Lista que armazenará o histórico das consultas
+  final List<IMC> _historico = [];
+
+  @override
+  void dispose() {
+    _pesoController.dispose();
+    _alturaController.dispose();
+    super.dispose();
+  }
+
+  void _calcularImc() {
+    // Verifica se os campos foram preenchidos corretamente
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final peso = double.parse(
+      _pesoController.text.replaceAll(',', '.'),
+    );
+
+    final altura = double.parse(
+      _alturaController.text.replaceAll(',', '.'),
+    );
+
+    final imc = IMC(
+      altura: altura,
+      peso: peso,
+    );
+
+    // Atualiza a tela adicionando a nova consulta ao histórico
+    setState(() {
+      _historico.add(imc);
+    });
+
+    // Exibe o resultado
+    mostrarAlertImc(
+      context: context,
+      imc: imc,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Obtém as dimensões da tela
+    final tamanhoTela = MediaQuery.sizeOf(context);
+    final paddingTela = tamanhoTela.width * 0.04;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Calculadora de IMC'),
+      ),
+      body: Padding(
+        padding: EdgeInsets.fromLTRB(paddingTela, paddingTela, paddingTela, 0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _pesoController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Peso',
+                  hintText: 'Ex.: 70',
+                  suffixText: 'kg',
+                  border: OutlineInputBorder(),
+                ),
+
+                // Limita o peso a 3 dígitos
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(3),
+                ],
+
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Informe o peso';
+                  }
+
+                  final peso = double.tryParse(value);
+
+                  if (peso == null) {
+                    return 'Informe um valor numérico';
+                  }
+
+                  if (peso <= 0) {
+                    return 'Informe um peso válido';
+                  }
+
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _alturaController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Altura',
+                  hintText: 'Ex.: 1,75',
+                  suffixText: 'm',
+                  border: OutlineInputBorder(),
+                ),
+
+                // Permite números e uma vírgula para a altura
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(
+                    RegExp(r'^\d{0,1}([,.]\d{0,2})?$'),
+                  ),
+                ],
+
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Informe a altura';
+                  }
+
+                  final altura = double.tryParse(
+                    value.replaceAll(',', '.'),
+                  );
+
+                  if (altura == null) {
+                    return 'Informe um valor numérico';
+                  }
+
+                  if (altura <= 0) {
+                    return 'Informe uma altura válida';
+                  }
+
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 24),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _calcularImc,
+                  child: const Text('Calcular IMC'),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              if(_historico.isNotEmpty)
+                Text(
+                  'Histórico de consultas',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+
+              const SizedBox(height: 8),
+
+              // O histórico ocupa o espaço restante
+              Expanded(
+                child: ListView.builder(
+                  padding: EdgeInsets.only(bottom: paddingTela),
+                  // Representa a quantidade de itens a ser listada
+                  itemCount: _historico.length,
+                  // Mostra os registros mais recentes primeiro
+                  itemBuilder: (context, index)=>
+                      CardIMC(imc: _historico[index]),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+```
+
+### 2. Adicionando o componente `card_imc`
+
+A fim de facilitar a reutilização dos elementos foi criado o componente para representar o item listado.
+```dart 
+import 'package:flutter/material.dart';
+import 'package:imc/models/imc.dart';
+
+class CardIMC extends StatelessWidget {
+  final IMC imc;
+  const CardIMC({
+    super.key,
+    required this.imc
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: CircleAvatar(
+          child: Icon(Icons.calculate_outlined),
+        ),
+        title: Text(
+          imc.classificacao,
+        ),
+        subtitle: Text(
+          'Peso: ${imc.peso.toStringAsFixed(0)} kg\n'
+              'Altura: ${imc.altura.toStringAsFixed(2)} m',
+        ),
+        trailing: Text(
+          'IMC\n${imc.resultado.toStringAsFixed(2)}',
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+}
+```
+
+### Onde estão os três novos conceitos?
+
+### 1. `MediaQuery`
+
+Foi utilizado para descobrir a largura disponível da tela:
+
+```dart
+final tamanhoTela = MediaQuery.sizeOf(context);
+final paddingTela = tamanhoTela.width * 0.04;
+```
+
+E usamos essa informação no `Padding`:
+
+```dart
+padding: EdgeInsets.fromLTRB(paddingTela, paddingTela, paddingTela, 0),
+```
+
+Assim, em vez de utilizar um valor fixo o espaçamento é calculado proporcionalmente à largura da tela.
+Desta forma, podemos usar o MediaQuery para consultar dados sobre proporções do dispositivo (largura, altura, quanidade de pixels, padding etc).
+Abaixo segue exemplo de recuperação de altura e largura da tela:
+```dart
+MediaQuery.sizeOf(context).height;
+MediaQuery.sizeOf(context).width;
+```
+
+### 2. `Expanded`
+
+O ponto mais importante está aqui:
+
+```dart
+Expanded(
+  child: ListView.builder(
+    ...
+  ),
+),
+```
+
+O `Expanded` diz:
+
+> "Utilize todo o espaço restante disponível para este widget."
+
+Isso é particularmente importante porque o `ListView` precisa ficar limitado a uma altura dentro do `Column`.
+
+Sem o `Expanded`, você pode encontrar problemas de **overflow** ou até mesmo erro ao gerar o widget da lista.
+
+---
+
+### 3. `ListView.builder`
+
+O histórico é construído dinamicamente:
+
+```dart
+ListView.builder(
+  padding: EdgeInsets.only(bottom: paddingTela),
+  // Representa a quantidade de itens a ser listada
+  itemCount: _historico.length,
+  // Mostra os registros mais recentes primeiro
+  itemBuilder: (context, index)=> CardIMC(imc: _historico[index]),
+),
+```
+
+Se houver:
+
+```text
+_historico.length == 3
+```
+
+o Flutter construirá três itens. Cada item é baseado em um objeto `CardIMC`, que representa os dados listados.
+E, caso existam muitos registros, o `ListView` permitirá a rolagem.
+
