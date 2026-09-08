@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:imc/screens/widgets/card_imc.dart';
 
 import '../alerts/alerts.dart';
 import '../models/imc.dart';
@@ -68,14 +67,28 @@ class _ImcScreenState extends State<ImcScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Calculadora de IMC'),
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                '/history',
+                arguments: _historico,
+              );
+            },
+            icon: const Icon(Icons.history),
+            tooltip: 'Ver histórico',
+          ),
+        ],
       ),
-      body: Padding(
-        padding: EdgeInsets.fromLTRB(paddingTela, paddingTela, paddingTela, 0),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(paddingTela),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _pesoController,
                 keyboardType: TextInputType.number,
@@ -83,107 +96,68 @@ class _ImcScreenState extends State<ImcScreen> {
                   labelText: 'Peso',
                   hintText: 'Ex.: 70',
                   suffixText: 'kg',
-                  border: OutlineInputBorder(),
                 ),
-
-                // Limita o peso a 3 dígitos
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(3),
                 ],
-
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Informe o peso';
                   }
-
                   final peso = double.tryParse(value);
-
-                  if (peso == null) {
-                    return 'Informe um valor numérico';
-                  }
-
-                  if (peso <= 0) {
+                  if (peso == null || peso <= 0) {
                     return 'Informe um peso válido';
                   }
-
                   return null;
                 },
               ),
-
               const SizedBox(height: 16),
-
               TextFormField(
                 controller: _alturaController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
                   labelText: 'Altura',
-                  hintText: 'Ex.: 1,75',
+                  hintText: 'Ex.: 1.75',
                   suffixText: 'm',
-                  border: OutlineInputBorder(),
                 ),
-
-                // Permite números e uma vírgula para a altura
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(
                     RegExp(r'^\d{0,1}([,.]\d{0,2})?$'),
                   ),
                 ],
-
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Informe a altura';
                   }
-
-                  final altura = double.tryParse(
-                    value.replaceAll(',', '.'),
-                  );
-
-                  if (altura == null) {
-                    return 'Informe um valor numérico';
-                  }
-
-                  if (altura <= 0) {
+                  final altura = double.tryParse(value.replaceAll(',', '.'));
+                  if (altura == null || altura <= 0) {
                     return 'Informe uma altura válida';
                   }
-
                   return null;
                 },
               ),
-
-              const SizedBox(height: 24),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _calcularImc,
-                  child: const Text('Calcular IMC'),
-                ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: _calcularImc,
+                child: const Text('Calcular IMC'),
               ),
-
               const SizedBox(height: 24),
-
-              if(_historico.isNotEmpty)
-                Text(
-                  'Histórico de consultas',
-                  style: Theme.of(context).textTheme.titleLarge,
+              // Feedback visual de que existe histórico
+              if (_historico.isNotEmpty)
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () {
+                      Navigator.pushNamed(
+                        context,
+                        '/history',
+                        arguments: _historico,
+                      );
+                    },
+                    icon: const Icon(Icons.list_alt),
+                    label: Text('Ver Histórico (${_historico.length})'),
+                  ),
                 ),
-
-              const SizedBox(height: 8),
-
-              // O histórico ocupa o espaço restante
-              Expanded(
-                child: ListView.builder(
-                  padding: EdgeInsets.only(bottom: paddingTela),
-                  // Representa a quantidade de itens a ser listada
-                  itemCount: _historico.length,
-                  // Mostra os registros mais recentes primeiro
-                  itemBuilder: (context, index)=>
-                      CardIMC(imc: _historico[index]),
-                ),
-              ),
             ],
           ),
         ),

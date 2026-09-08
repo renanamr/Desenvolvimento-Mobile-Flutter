@@ -872,3 +872,42 @@ return MaterialApp(
   home: const ImcScreen(),
 );
 ```
+
+## Parte 4 - Navegação e Rotas Nomeadas
+Nesta etapa, refatoramos a estrutura do aplicativo para suportar múltiplas telas, separando a calculadora do histórico de consultas.
+
+### Itens trabalhados nessa parte do projeto:
+* **Rotas Nomeadas:** Configuração de `initialRoute` e `onGenerateRoute` no `MaterialApp`;
+* **Passagem de Parâmetros:** Uso de `arguments` no `Navigator.pushNamed` para enviar o histórico entre telas;
+* **Nova Tela `HistoryScreen`:** Criação de uma tela dedicada para a listagem de consultas;
+* **Navegação na AppBar:** Adição de ícones de ação e feedback visual para navegação.
+
+### Importância e Vantagens
+1. **Organização (Single Responsibility):** Cada tela agora tem uma única responsabilidade clara (cálculo vs. visualização).
+2. **Escalabilidade:** Facilita a adição de novas funcionalidades (ex: perfil do usuário, configurações) através do sistema de rotas.
+3. **UX (Experiência do Usuário):** A tela principal fica mais limpa, focada na ação principal de cálculo, enquanto o histórico é acessado sob demanda.
+4. **Gerenciamento de Estado Simples:** Demonstra como passar coleções de dados entre diferentes contextos de tela no Flutter.
+
+### Exemplo de Navegação com Argumentos
+```dart
+// Navegando e passando a lista como argumento
+Navigator.pushNamed(
+  context,
+  '/history',
+  arguments: _historico,
+);
+```
+
+### Configuração das Rotas
+```dart
+// No main.dart usando onGenerateRoute para capturar argumentos
+onGenerateRoute: (settings) {
+  if (settings.name == '/history') {
+    final args = settings.arguments as List<IMC>;
+    return MaterialPageRoute(
+      builder: (_) => HistoryScreen(historico: args),
+    );
+  }
+}
+```
+
