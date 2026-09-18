@@ -873,6 +873,12 @@ return MaterialApp(
 );
 ```
 
+#### Verificando andamento...
+Para verificar se seu projeto está igual a este, você pode usar o comando **git** abaixo:
+```bash
+git checkout be40b11
+```
+
 ## Parte 4 - Navegação e Rotas Nomeadas
 Nesta etapa, refatoramos a estrutura do aplicativo para suportar múltiplas telas, separando a calculadora do histórico de consultas.
 
@@ -911,3 +917,8 @@ onGenerateRoute: (settings) {
 }
 ```
 
+#### Verificando andamento...
+Para verificar se seu projeto está igual a este, você pode usar o comando **git** abaixo:
+```bash
+git checkout 7138e93
+```

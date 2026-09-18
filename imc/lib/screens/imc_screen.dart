@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:imc/screens/history_screen.dart';
+import 'package:imc/utils/routes_app.dart';
 
 import '../alerts/alerts.dart';
 import '../models/imc.dart';
@@ -72,7 +74,7 @@ class _ImcScreenState extends State<ImcScreen> {
             onPressed: () {
               Navigator.pushNamed(
                 context,
-                '/history',
+                RoutesApp.history,
                 arguments: _historico,
               );
             },
@@ -150,7 +152,7 @@ class _ImcScreenState extends State<ImcScreen> {
                     onPressed: () {
                       Navigator.pushNamed(
                         context,
-                        '/history',
+                        RoutesApp.history,
                         arguments: _historico,
                       );
                     },
