@@ -1,4 +1,5 @@
 import 'package:deputados_information/modules/deputados/domain/entities/deputado_details.dart';
+import 'package:deputados_information/modules/deputados/external/datasources/deputados_remote_datasource.dart';
 
 abstract class IGetDeputadoBy{
   Future<DeputadoDetails> call(int id);
@@ -6,13 +7,10 @@ abstract class IGetDeputadoBy{
 
 class GetDeputadoByIdImpl implements IGetDeputadoBy{
 
+  final dataSource = DeputadosRemoteDataSource();
+
   @override
   Future<DeputadoDetails> call(int id) async {
-    return DeputadoDetails(
-        nomeCivil: "Renatinho da Silva",
-        dataNascimento: "12/10/1980",
-        siglaUf: "PE",
-        situacao: "ATIVO"
-    );
+    return await dataSource.obterPorId(id);
   }
 }

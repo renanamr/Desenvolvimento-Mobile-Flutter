@@ -920,5 +920,5 @@ onGenerateRoute: (settings) {
 #### Verificando andamento...
 Para verificar se seu projeto está igual a este, você pode usar o comando **git** abaixo:
 ```bash
-git checkout 7138e93
+git checkout 8dac554
 ```

@@ -154,6 +154,161 @@ Esse recurso é útil em campos de pesquisa, principalmente quando a operação 
 
 ---
 
+#### Verificando andamento...
+Para verificar se seu projeto está igual a este, você pode usar o comando **git** abaixo:
+```bash
+git checkout fb60b8c
+```
+
+## Parte 2 - Comunicação HTTP com Dio
+
+Nesta etapa, a aplicação deixa de utilizar somente dados locais e passa a consultar a API de Dados Abertos da Câmara dos Deputados utilizando o pacote `Dio`.
+
+Serão trabalhadas requisições `GET` para obter uma lista de deputados e os dados individuais de um deputado. Também serão apresentados exemplos básicos de `POST` e `DELETE`.
+
+### Itens trabalhados nessa parte do projeto:
+
+* Configuração de uma instância do `Dio`;
+* Definição da URL base;
+* Requisições HTTP `GET`;
+* Consulta de uma lista de deputados;
+* Consulta de um deputado por ID;
+* Leitura de dados JSON;
+* Conversão de JSON para modelos Dart;
+* Exemplos básicos de `POST` e `DELETE`;
+* Tratamento inicial de respostas e erros.
+
+### Configuração do Dio
+
+A instância do `Dio` pode ser configurada com uma URL base:
+
+```dart
+final dio = Dio(
+  BaseOptions(
+    baseUrl: 'https://dadosabertos.camara.leg.br/api/v2',
+  ),
+);
+```
+
+### GET para listar deputados
+
+A consulta da lista de deputados utiliza o endpoint `/deputados`:
+
+```dart
+Future<List<DeputadoModel>> listarDeputados() async {
+  final response = await dio.get('/deputados');
+
+  final dados = response.data['dados'] as List;
+
+  return dados
+      .map((item) => DeputadoModel.fromMap(item))
+      .toList();
+}
+```
+
+A resposta possui uma coleção de objetos JSON. Cada item é convertido em um `DeputadoModel`.
+
+Uma resposta simplificada pode ser representada da seguinte forma:
+
+```json
+{
+  "dados": [
+    {
+      "id": 123,
+      "nome": "Nome do Deputado",
+      "siglaPartido": "AME",
+      "siglaUf": "PE"
+    }
+  ]
+}
+```
+
+### GET para obter o detalhe de um deputado
+
+Para consultar um deputado individual, o ID é inserido na URL:
+
+```dart
+Future<DeputadoModel> obterDeputadoPorId(int id) async {
+  final response = await dio.get('/deputados/$id');
+
+  final dados = response.data['dados'];
+
+  return DeputadoModel.fromMap(dados);
+}
+```
+
+Nesse caso, a resposta representa um único objeto JSON, e não uma lista.
+
+Uma resposta simplificada pode ser representada assim:
+
+```json
+{
+  "dados": {
+    "id": 123,
+    "nome": "Nome do Deputado",
+    "siglaPartido": "AME",
+    "siglaUf": "PE",
+    "email": "deputado@camara.leg.br"
+  }
+}
+```
+
+A tela de detalhamento utiliza o ID recebido durante a navegação para executar essa consulta.
+
+### Exemplo superficial de POST
+
+O método `POST` é utilizado para enviar dados ao servidor, normalmente para criar um recurso ou executar uma operação que recebe informações no corpo da requisição.
+
+```dart
+Future<void> criarRegistro(Map<String, dynamic> dados) async {
+  await dio.post(
+    '/registros',
+    data: dados,
+  );
+}
+```
+
+O exemplo é apenas ilustrativo. A API utilizada no projeto não será modificada para criar registros de deputados.
+
+### Exemplo superficial de DELETE
+
+O método `DELETE` é utilizado para solicitar a exclusão de um recurso identificado na URL:
+
+```dart
+Future<void> excluirRegistro(int id) async {
+  await dio.delete('/registros/$id');
+}
+```
+
+Assim como no exemplo de `POST`, o código tem finalidade didática para demonstrar a estrutura básica da chamada HTTP.
+
+### Tratamento básico de erros
+
+As chamadas podem ser protegidas com `try/catch`:
+
+```dart
+try {
+  final response = await dio.get('/deputados');
+  print(response.data);
+} on DioException catch (erro) {
+  print('Erro na requisição: ${erro.message}');
+}
+```
+
+O tratamento pode ser aprimorado posteriormente para diferenciar erros de conexão, timeout, respostas inválidas e códigos HTTP.
+
+---
+
+
+## Fonte dos dados
+
+Os dados remotos são obtidos pela API de Dados Abertos da Câmara dos Deputados.
+
+Documentação oficial:
+
+* [API de Dados Abertos da Câmara dos Deputados](https://dadosabertos.camara.leg.br/swagger/api.html)
+
 ## Dependências principais
 
 * **RxDart:** programação reativa e gerenciamento de fluxos;
+* **Dio:** comunicação HTTP e consumo da API REST.
