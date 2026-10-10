@@ -7,6 +7,8 @@ Nesse projeto serão trabalhados três conceitos principais no desenvolvimento d
 * **Clean Dart:** organização do projeto em camadas e separação de responsabilidades.
 * **Flutter Modular:** injeção de dependências e gerenciamento de rotas.
 * **SqFlite:** persistência de dados local e suporte offline.
+* **Testes:** testes unitários e de widgets.
+* **GitHub Actions:** esteira de CI para validação de qualidade e execução de testes.
 
 O aplicativo apresenta uma lista de deputados e permite consultar os detalhes de um deputado específico a partir do seu identificador.
 
@@ -152,7 +154,7 @@ final pesquisaControlada = pesquisaSubject
     .debounceTime(const Duration(milliseconds: 400));
 ```
 
-Esse recurso é útil em campos de pesquisa, principalmente quando a operação envolve uma chamada de rede.
+Esse recurso é útil em campos de pesquisa, principalement quando a operação envolve uma chamada de rede.
 
 ---
 
@@ -438,12 +440,6 @@ class DeputadosRemoteDataSource implements IDeputadosDataSource {
 }
 ```
 
-#### Verificando andamento...
-Para verificar se seu projeto está igual a este, você pode usar o comando **git** abaixo:
-```bash
-git checkout 1fe97b3
-```
-
 ---
 
 ## Parte 4 - Injeção de Dependência e Rotas com Flutter Modular
@@ -546,12 +542,6 @@ class DeputadosModule extends Module {
 }
 ```
 
-#### Verificando andamento...
-Para verificar se seu projeto está igual a este, você pode usar o comando **git** abaixo:
-```bash
-git checkout 3a47755
-```
-
 ---
 
 ## Parte 5 - Armazenamento Local e Cache Offline com SqFlite
@@ -645,29 +635,84 @@ class DeputadosLocalDataSource implements IDeputadosLocalDataSource {
 }
 ```
 
-#### 3. Estratégia de Cache no Repositório (`DeputadosRepositoryImpl`)
+---
 
-Orquestra a consulta e persistência dos dados:
+## Parte 6 - Testes Unitários e de Widgets com Mockito
 
-```dart
-@override
-Future<List<Deputado>> getDeputados() async {
-  try {
-    // 1. Busca dados da API remota
-    final deputados = await remoteDataSource.listar();
-    // 2. Salva localmente no banco SQLite
-    await localDataSource.saveDeputados(deputados);
-    return deputados;
-  } catch (e) {
-    // 3. Em caso de erro na API/internet, recupera os deputados salvos localmente
-    final localDeputados = await localDataSource.getDeputados();
-    if (localDeputados.isNotEmpty) {
-      return localDeputados;
-    }
-    rethrow;
-  }
-}
+Nesta etapa, foram implementados **testes unitários** utilizando **Mockito** (com geração de mocks via `build_runner`) abrangendo todas as camadas da aplicação (Model, DataSource, Repository, UseCase e BLoC) e **testes de widgets** para a tela de listagem `DeputadosListScreen`.
+
+### Principais Ganhos
+
+1. **Garantia de Qualidade e Prevenção de Regressão:** Permite alterar ou refatorar o código com segurança, garantindo que o comportamento esperado não seja quebrado.
+2. **Execução Rápida:** Os testes unitários são executados diretamente na máquina (sem necessidade de emulador), fornecendo feedback imediato ao desenvolvedor.
+3. **Isolamento de Dependências com Mockito:** Mocks fortemente tipados gerados pelo `build_runner` garantem segurança em tempo de compilação para simular respostas do `Dio`, conexões do `SqFlite` e retornos dos repositórios.
+
+---
+
+### Estrutura dos Testes
+
+```text
+test/
+└── modules/
+    └── deputados/
+        ├── domain/
+        │   └── usecases/
+        │       ├── get_deputados_test.dart
+        │       └── get_deputado_by_id_test.dart
+        ├── infra/
+        │   ├── models/
+        │   │   ├── deputado_model_test.dart
+        │   │   └── deputado_details_model_test.dart
+        │   └── repositories/
+        │       └── deputados_repository_impl_test.dart
+        ├── external/
+        │   └── datasources/
+        │       ├── deputados_remote_datasource_test.dart
+        │       └── deputados_local_datasource_test.dart
+        └── presenter/
+            ├── details/
+            │   └── deputados_details_bloc_test.dart
+            └── list/
+                ├── deputados_list_bloc_test.dart
+                └── deputados_list_screen_test.dart
 ```
+
+### Cobertura de Testes Criada
+
+- **Models (`DeputadoModelTest`, `DeputadoDetailsModelTest`):** Valida a conversão de mapas JSON/SQLite para os objetos de modelo (`fromMap` e `toMap`).
+- **DataSources (`DeputadosRemoteDataSourceTest`, `DeputadosLocalDataSourceTest`):** Valida as requisições HTTP do `Dio` e as operações de banco local do `SqFlite`.
+- **Repository (`DeputadosRepositoryImplTest`):** Valida a lógica de negócio do repositório, incluindo o fluxo de sucesso da API e o fallback para o SQLite em caso de indisponibilidade da rede.
+- **UseCases (`GetDeputadosTest`, `GetDeputadoByIdTest`):** Valida se as chamadas de regras de negócio delegam corretamente para as interfaces do repositório.
+- **BLoCs (`DeputadosBlocTest`, `DeputadoDetailsBlocTest`):** Valida a emissão reativa de estados (`BehaviorSubject` e `Stream`) durante o carregamento de dados e em cenários de erro.
+- **Widgets (`DeputadosListScreenTest`):** Valida a renderização da interface `DeputadosListScreen` nos estados de *loading* (`CircularProgressIndicator`), sucesso com lista de itens (`DeputadoCard`) e estado de erro.
+
+---
+
+### Como Gerar os Mocks e Executar os Testes
+
+1. Para gerar ou atualizar os arquivos de mock com o **build_runner**:
+```bash
+dart run build_runner build --delete-conflicting-outputs
+```
+
+2. Para rodar todos os testes unitários e de widgets do projeto:
+```bash
+flutter test
+```
+
+---
+
+## Parte 7 - Integração Contínua (CI) com GitHub Actions
+
+Foi adicionada uma esteira de Integração Contínua (CI) via GitHub Actions (`.github/workflows/quality.yml`) executada automaticamente a cada `push` ou `pull_request` nas branches `main` e `master`.
+
+### Etapas da Esteira de Qualidade (`quality`):
+
+1. **Configuração do Ambiente:** Instalação do Java 17 e do Flutter SDK.
+2. **Instalação de Dependências:** Execução do `flutter pub get`.
+3. **Geração de Mocks:** Execução do `dart run build_runner build --delete-conflicting-outputs`.
+4. **Análise Estática de Código:** Execução do `flutter analyze` validando as regras do `analysis_options.yaml`.
+5. **Execução de Testes:** Execução de `flutter test` verificando que todos os testes unitários e de widgets foram aprovados.
 
 ---
 
@@ -684,4 +729,6 @@ Documentação oficial:
 * **RxDart:** programação reativa e gerenciamento de fluxos;
 * **Dio:** comunicação HTTP e consumo da API REST;
 * **Flutter Modular:** injeção de dependências e gerenciamento de rotas;
-* **SqFlite:** banco de dados SQLite local e suporte offline.
+* **SqFlite:** banco de dados SQLite local e suporte offline;
+* **Mockito / Build Runner / Flutter Test:** testes unitários e de widgets com geração de mocks;
+* **GitHub Actions:** automação de testes e checagem estática de qualidade no repositório.
