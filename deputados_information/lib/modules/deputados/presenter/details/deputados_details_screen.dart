@@ -1,15 +1,19 @@
+import 'package:deputados_information/modules/deputados/domain/usecases/get_deputado_by_id.dart';
+import 'package:deputados_information/modules/deputados/external/datasources/deputados_remote_datasource.dart';
+import 'package:deputados_information/modules/deputados/infra/repositories/deputados_repository_impl.dart';
 import 'package:deputados_information/modules/deputados/presenter/details/deputados_details_bloc.dart';
 import 'package:deputados_information/utils/deputado_details_state.dart';
 import 'package:flutter/material.dart';
 import '../../domain/entities/deputado.dart';
 
-
 class DeputadoDetailsScreen extends StatefulWidget {
   final Deputado deputado;
+  final DeputadoDetailsBloc? bloc;
 
   const DeputadoDetailsScreen({
     super.key,
     required this.deputado,
+    this.bloc,
   });
 
   @override
@@ -17,13 +21,21 @@ class DeputadoDetailsScreen extends StatefulWidget {
       _DeputadoDetailsScreenState();
 }
 
-class _DeputadoDetailsScreenState  extends State<DeputadoDetailsScreen> {
-
-  final DeputadoDetailsBloc bloc = DeputadoDetailsBloc();
+class _DeputadoDetailsScreenState extends State<DeputadoDetailsScreen> {
+  late final DeputadoDetailsBloc bloc;
 
   @override
   void initState() {
     super.initState();
+
+    if (widget.bloc != null) {
+      bloc = widget.bloc!;
+    } else {
+      final dataSource = DeputadosRemoteDataSource();
+      final repository = DeputadosRepositoryImpl(dataSource: dataSource);
+      final usecase = GetDeputadoByIdImpl(repository: repository);
+      bloc = DeputadoDetailsBloc(obterDeputadoPorId: usecase);
+    }
 
     bloc.carregar(widget.deputado);
   }
@@ -61,7 +73,7 @@ class _DeputadoDetailsScreenState  extends State<DeputadoDetailsScreen> {
 
           if (state.status ==
               DeputadoDetailsStatus.error) {
-            return Center(
+            return const Center(
               child: Text(
                 'Não foi possível carregar os dados.',
               ),

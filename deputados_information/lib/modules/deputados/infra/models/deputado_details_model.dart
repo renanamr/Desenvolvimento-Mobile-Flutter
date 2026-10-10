@@ -1,6 +1,6 @@
-import 'package:deputados_information/modules/deputados/domain/entities/deputado_details.dart';
+import '../../domain/entities/deputado_details.dart';
 
-class DeputadoDetailsModel extends DeputadoDetails{
+class DeputadoDetailsModel extends DeputadoDetails {
   const DeputadoDetailsModel({
     required super.nomeCivil,
     required super.dataNascimento,

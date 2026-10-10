@@ -118,7 +118,7 @@ void buscarDeputado(int id) {
 }
 ```
 
-No projeto, esse conceito pode ser aplicado ao carregamento do detalhamento de um deputado, especialmente quando novas solicitações podem ocorrer antes da conclusão da anterior.
+No projeto, esse conceito pode ser applied ao carregamento do detalhamento de um deputado, especialmente quando novas solicitações podem ocorrer antes da conclusão da anterior.
 
 ### `combineLatest`
 
@@ -299,6 +299,124 @@ O tratamento pode ser aprimorado posteriormente para diferenciar erros de conex�
 
 ---
 
+## Parte 3 - Arquitetura Clean Dart
+
+Nesta etapa, o projeto foi refatorado utilizando a proposta arquitetural do **Clean Dart**, promovendo o desacoplamento, a testabilidade e o isolamento das regras de negócio em relação às dependências externas (como bibliotecas HTTP ou frameworks de UI).
+
+### Estrutura de Camadas
+
+```text
+lib/modules/deputados/
+├── domain/
+│   ├── entities/            # Objetos de domínio puro (ex: Deputado, DeputadoDetails)
+│   ├── repositories/        # Contratos/interfaces dos Repositórios (ex: IDeputadosRepository)
+│   └── usecases/            # Regras de negócio e suas interfaces (ex: IGetDeputados, IGetDeputadoById)
+├── infra/
+│   ├── datasources/         # Contratos/interfaces dos DataSources (ex: IDeputadosDataSource)
+│   ├── models/              # Modelos que herdam das entidades e realizam parse (ex: DeputadoModel)
+│   └── repositories/        # Implementação concreta dos Repositórios (ex: DeputadosRepositoryImpl)
+├── external/
+│   └── datasources/         # Implementação concreta do DataSource utilizando Dio (ex: DeputadosRemoteDataSource)
+└── presenter/
+    ├── details/             # BLoC e Tela de detalhes do deputado
+    ├── list/                # BLoC e Tela de listagem de deputados
+    └── widget/              # Componentes visuais (ex: DeputadoCard)
+```
+
+---
+
+### Fluxo de Dependências e Contratos
+
+A comunicação entre cada etapa do sistema é intermediada por interfaces (contratos), seguindo o fluxo:
+
+Presenter (BLoC) -> Usecase (Interface) -> Usecase (Real) -> Repository (Interface) -> Repository (Real) -> Datasource (Interface) -> External Datasource (Real);
+
+#### 1. Usecase -> Repository (Domain)
+
+O caso de uso depende da interface abstrata do repositório contida no domínio:
+
+```dart
+// domain/repositories/interface_deputados_repository.dart
+abstract class IDeputadosRepository {
+  Future<List<Deputado>> getDeputados();
+  Future<DeputadoDetails> getDeputadoById(int id);
+}
+
+// domain/usecases/get_deputados.dart
+abstract class IGetDeputados {
+  Future<List<Deputado>> call();
+}
+
+class GetDeputadosImpl implements IGetDeputados {
+  final IDeputadosRepository repository;
+
+  GetDeputadosImpl({required this.repository});
+
+  @override
+  Future<List<Deputado>> call() async {
+    return await repository.getDeputados();
+  }
+}
+```
+
+#### 2. Repository -> Datasource (Infra)
+
+A implementação do repositório fica na camada `infra` e depende da interface do `DataSource`:
+
+```dart
+// infra/datasources/interface_deputados_datasource.dart
+abstract class IDeputadosDataSource {
+  Future<List<DeputadoModel>> listar();
+  Future<DeputadoDetailsModel> obterPorId(int id);
+}
+
+// infra/repositories/deputados_repository_impl.dart
+class DeputadosRepositoryImpl implements IDeputadosRepository {
+  final IDeputadosDataSource dataSource;
+
+  DeputadosRepositoryImpl({required this.dataSource});
+
+  @override
+  Future<List<Deputado>> getDeputados() async {
+    return await dataSource.listar();
+  }
+
+  @override
+  Future<DeputadoDetails> getDeputadoById(int id) async {
+    return await dataSource.obterPorId(id);
+  }
+}
+```
+
+#### 3. Datasource Concreto (External)
+
+A implementação real do DataSource consome a API REST com `Dio` e converte as respostas JSON para os modelos contidos na camada `infra`:
+
+```dart
+// external/datasources/deputados_remote_datasource.dart
+class DeputadosRemoteDataSource implements IDeputadosDataSource {
+  final Dio dio;
+
+  DeputadosRemoteDataSource({Dio? dio})
+      : dio = dio ?? Dio(BaseOptions(baseUrl: 'https://dadosabertos.camara.leg.br/api/v2'));
+
+  @override
+  Future<List<DeputadoModel>> listar() async {
+    final response = await dio.get('/deputados');
+    final dados = response.data['dados'] as List;
+
+    return dados.map<DeputadoModel>((item) => DeputadoModel.fromMap(item)).toList();
+  }
+
+  @override
+  Future<DeputadoDetailsModel> obterPorId(int id) async {
+    final response = await dio.get('/deputados/$id');
+    return DeputadoDetailsModel.fromMap(response.data['dados']);
+  }
+}
+```
+
+---
 
 ## Fonte dos dados
 

@@ -1,16 +1,17 @@
-import 'package:deputados_information/modules/deputados/domain/entities/deputado_details.dart';
-import 'package:deputados_information/modules/deputados/external/datasources/deputados_remote_datasource.dart';
+import '../entities/deputado_details.dart';
+import '../repositories/interface_deputados_repository.dart';
 
-abstract class IGetDeputadoBy{
+abstract class IGetDeputadoById {
   Future<DeputadoDetails> call(int id);
 }
 
-class GetDeputadoByIdImpl implements IGetDeputadoBy{
+class GetDeputadoByIdImpl implements IGetDeputadoById {
+  final IDeputadosRepository repository;
 
-  final dataSource = DeputadosRemoteDataSource();
+  GetDeputadoByIdImpl({required this.repository});
 
   @override
   Future<DeputadoDetails> call(int id) async {
-    return await dataSource.obterPorId(id);
+    return await repository.getDeputadoById(id);
   }
 }

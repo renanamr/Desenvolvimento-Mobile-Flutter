@@ -4,7 +4,9 @@ import 'package:deputados_information/utils/deputado_details_state.dart';
 import 'package:rxdart/rxdart.dart';
 
 class DeputadoDetailsBloc {
-  final GetDeputadoByIdImpl obterDeputadoPorId = GetDeputadoByIdImpl();
+  final IGetDeputadoById obterDeputadoPorId;
+
+  DeputadoDetailsBloc({required this.obterDeputadoPorId});
 
   final _stateSubject = BehaviorSubject.seeded(
     DeputadoDetailsState.initial(),
@@ -19,8 +21,9 @@ class DeputadoDetailsBloc {
       ),
     );
 
-    obterDeputadoPorId(deputado.id).then((deputadoDetails) {
-      deputado.deputadoDetails = deputadoDetails;
+    obterDeputadoPorId(deputado.id).then(
+      (deputadoDetails) {
+        deputado.deputadoDetails = deputadoDetails;
         _stateSubject.add(
           DeputadoDetailsState(
             status: DeputadoDetailsStatus.success,
@@ -28,7 +31,8 @@ class DeputadoDetailsBloc {
           ),
         );
       },
-    ).catchError((error) {
+    ).catchError(
+      (error) {
         _stateSubject.add(
           DeputadoDetailsState(
             status: DeputadoDetailsStatus.error,
