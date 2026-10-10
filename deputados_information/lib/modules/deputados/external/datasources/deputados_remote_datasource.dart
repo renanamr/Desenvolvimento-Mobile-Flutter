@@ -40,7 +40,6 @@ class DeputadosRemoteDataSource implements IDeputadosDataSource {
         response.data['dados'],
       );
     } catch (e) {
-      print(e);
       rethrow;
     }
   }

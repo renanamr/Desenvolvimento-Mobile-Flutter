@@ -6,6 +6,7 @@ Nesse projeto serão trabalhados três conceitos principais no desenvolvimento d
 * **Dio:** comunicação HTTP e consumo de dados JSON;
 * **Clean Dart:** organização do projeto em camadas e separação de responsabilidades.
 * **Flutter Modular:** injeção de dependências e gerenciamento de rotas.
+* **SqFlite:** persistência de dados local e suporte offline.
 
 O aplicativo apresenta uma lista de deputados e permite consultar os detalhes de um deputado específico a partir do seu identificador.
 
@@ -313,11 +314,11 @@ lib/modules/deputados/
 │   ├── repositories/        # Contratos/interfaces dos Repositórios (ex: IDeputadosRepository)
 │   └── usecases/            # Regras de negócio e suas interfaces (ex: IGetDeputados, IGetDeputadoById)
 ├── infra/
-│   ├── datasources/         # Contratos/interfaces dos DataSources (ex: IDeputadosDataSource)
+│   ├── datasources/         # Contratos/interfaces dos DataSources (ex: IDeputadosDataSource, IDeputadosLocalDataSource)
 │   ├── models/              # Modelos que herdam das entidades e realizam parse (ex: DeputadoModel)
 │   └── repositories/        # Implementação concreta dos Repositórios (ex: DeputadosRepositoryImpl)
 ├── external/
-│   └── datasources/         # Implementação concreta do DataSource utilizando Dio (ex: DeputadosRemoteDataSource)
+│   └── datasources/         # Implementação concreta dos DataSources (ex: DeputadosRemoteDataSource, DeputadosLocalDataSource)
 └── presenter/
     ├── details/             # BLoC e Tela de detalhes do deputado
     ├── list/                # BLoC e Tela de listagem de deputados
@@ -362,7 +363,7 @@ class GetDeputadosImpl implements IGetDeputados {
 
 #### 2. Repository -> Datasource (Infra)
 
-A implementação do repositório fica na camada `infra` e depende da interface do `DataSource`:
+A implementação do repositório fica na camada `infra` e depende das interfaces dos `DataSources`:
 
 ```dart
 // infra/datasources/interface_deputados_datasource.dart
@@ -371,27 +372,47 @@ abstract class IDeputadosDataSource {
   Future<DeputadoDetailsModel> obterPorId(int id);
 }
 
+// infra/datasources/interface_deputados_local_datasource.dart
+abstract class IDeputadosLocalDataSource {
+  Future<List<DeputadoModel>> getDeputados();
+  Future<void> saveDeputados(List<DeputadoModel> deputados);
+}
+
 // infra/repositories/deputados_repository_impl.dart
 class DeputadosRepositoryImpl implements IDeputadosRepository {
-  final IDeputadosDataSource dataSource;
+  final IDeputadosDataSource remoteDataSource;
+  final IDeputadosLocalDataSource localDataSource;
 
-  DeputadosRepositoryImpl({required this.dataSource});
+  DeputadosRepositoryImpl({
+    required this.remoteDataSource,
+    required this.localDataSource,
+  });
 
   @override
   Future<List<Deputado>> getDeputados() async {
-    return await dataSource.listar();
+    try {
+      final deputados = await remoteDataSource.listar();
+      await localDataSource.saveDeputados(deputados);
+      return deputados;
+    } catch (e) {
+      final localDeputados = await localDataSource.getDeputados();
+      if (localDeputados.isNotEmpty) {
+        return localDeputados;
+      }
+      rethrow;
+    }
   }
 
   @override
   Future<DeputadoDetails> getDeputadoById(int id) async {
-    return await dataSource.obterPorId(id);
+    return await remoteDataSource.obterPorId(id);
   }
 }
 ```
 
 #### 3. Datasource Concreto (External)
 
-A implementação real do DataSource consome a API REST com `Dio` e converte as respostas JSON para os modelos contidos na camada `infra`:
+A implementação real dos DataSources consome a API REST com `Dio` (remoto) e o banco SQLite local com `SqFlite` (local):
 
 ```dart
 // external/datasources/deputados_remote_datasource.dart
@@ -475,22 +496,31 @@ class MyApp extends StatelessWidget {
 
 #### 2. Registro de Injeções de Dependência e Rotas (`deputados_module.dart`)
 
-No `DeputadosModule`, todos os contratos e suas respectivas implementações são registrados nos `binds`, do `DataSource` até o `BLoC`. As rotas nomeadas são definidas no método `routes`:
+No `DeputadosModule`, todos os contratos e suas respectivas implementações são registrados nos `binds`, do `DatabaseService` até o `BLoC`. As rotas nomeadas são definidas no método `routes`:
 
 ```dart
 // modules/deputados/deputados_module.dart
 class DeputadosModule extends Module {
   @override
   void binds(Injector i) {
+    // Database Service
+    i.addLazySingleton<DatabaseService>(DatabaseService.new);
+
     // DataSources
     i.addLazySingleton<IDeputadosDataSource>(DeputadosRemoteDataSource.new);
+    i.addLazySingleton<IDeputadosLocalDataSource>(DeputadosLocalDataSource.new);
 
     // Repositories
-    i.addLazySingleton<IDeputadosRepository>(DeputadosRepositoryImpl.new);
+    i.addLazySingleton<IDeputadosRepository>(
+      () => DeputadosRepositoryImpl(
+        remoteDataSource: i.get<IDeputadosDataSource>(),
+        localDataSource: i.get<IDeputadosLocalDataSource>(),
+      ),
+    );
 
     // UseCases
-    i.addLazySingleton<IGetDeputados>(GetDeputadosImpl.new);
-    i.addLazySingleton<IGetDeputadoById>(GetDeputadoByIdImpl.new);
+    i.add<IGetDeputados>(GetDeputadosImpl.new);
+    i.add<IGetDeputadoById>(GetDeputadoByIdImpl.new);
 
     // BLoCs
     i.add<DeputadosBloc>(DeputadosBloc.new);
@@ -516,16 +546,127 @@ class DeputadosModule extends Module {
 }
 ```
 
-#### 3. Navegação Nomeada
+#### Verificando andamento...
+Para verificar se seu projeto está igual a este, você pode usar o comando **git** abaixo:
+```bash
+git checkout 3a47755
+```
 
-Nas telas do aplicativo, a navegação entre telas é realizada com o `Modular.to.pushNamed`:
+---
+
+## Parte 5 - Armazenamento Local e Cache Offline com SqFlite
+
+Nesta etapa, o pacote **SqFlite** foi integrado para fornecer armazenamento local SQLite e suporte a **fallback offline**.
+
+### Objetivos e Ganhos
+
+1. **Cache Local de Dados:** A lista de deputados retornada da API remota é persistida no banco SQLite local (`deputados_app.db`).
+2. **Resiliência a Falhas (Fallback Offline):** Se houver falha de conexão com a internet, timeout ou indisponibilidade do serviço da API, o aplicativo recupera e exibe a lista salva localmente de forma transparente.
+3. **Persistência Transacional:** Operações de limpeza e gravação em lote (`batch`) garantem integridade dos registros armazenados sem travar a interface do usuário.
+
+---
+
+### Estrutura de Implementação
+
+#### 1. Serviço de Banco de Dados (`lib/services/database_service.dart`)
+
+Gerencia a abertura da conexão SQLite e cria a tabela `deputados`:
 
 ```dart
-// Navegação para a tela de detalhes enviando o objeto 'deputado' como argumento
-Modular.to.pushNamed(
-  '/details',
-  arguments: deputados[index],
-);
+class DatabaseService {
+  static Database? _database;
+
+  Future<Database> get database async {
+    if (_database != null) return _database!;
+    _database = await _initDatabase();
+    return _database!;
+  }
+
+  Future<Database> _initDatabase() async {
+    final databasesPath = await getDatabasesPath();
+    final path = join(databasesPath, 'deputados_app.db');
+
+    return await openDatabase(
+      path,
+      version: 1,
+      onCreate: (db, version) async {
+        await db.execute('''
+          CREATE TABLE deputados (
+            id INTEGER PRIMARY KEY,
+            nome TEXT NOT NULL,
+            siglaPartido TEXT NOT NULL,
+            siglaUf TEXT NOT NULL,
+            urlFoto TEXT NOT NULL,
+            email TEXT NOT NULL
+          )
+        ''');
+      },
+    );
+  }
+}
+```
+
+#### 2. DataSource Local (`DeputadosLocalDataSource`)
+
+Consome a instância do `DatabaseService` para salvar e consultar a lista de deputados no SQLite:
+
+```dart
+// external/datasources/deputados_local_datasource.dart
+class DeputadosLocalDataSource implements IDeputadosLocalDataSource {
+  final DatabaseService databaseService;
+
+  DeputadosLocalDataSource({DatabaseService? databaseService})
+      : databaseService = databaseService ?? DatabaseService();
+
+  @override
+  Future<List<DeputadoModel>> getDeputados() async {
+    final db = await databaseService.database;
+    final maps = await db.query('deputados');
+    return maps.map((map) => DeputadoModel.fromMap(map)).toList();
+  }
+
+  @override
+  Future<void> saveDeputados(List<DeputadoModel> deputados) async {
+    final db = await databaseService.database;
+    final batch = db.batch();
+
+    batch.delete('deputados');
+
+    for (final deputado in deputados) {
+      batch.insert(
+        'deputados',
+        deputado.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+
+    await batch.commit(noResult: true);
+  }
+}
+```
+
+#### 3. Estratégia de Cache no Repositório (`DeputadosRepositoryImpl`)
+
+Orquestra a consulta e persistência dos dados:
+
+```dart
+@override
+Future<List<Deputado>> getDeputados() async {
+  try {
+    // 1. Busca dados da API remota
+    final deputados = await remoteDataSource.listar();
+    // 2. Salva localmente no banco SQLite
+    await localDataSource.saveDeputados(deputados);
+    return deputados;
+  } catch (e) {
+    // 3. Em caso de erro na API/internet, recupera os deputados salvos localmente
+    final localDeputados = await localDataSource.getDeputados();
+    if (localDeputados.isNotEmpty) {
+      return localDeputados;
+    }
+    rethrow;
+  }
+}
 ```
 
 ---
@@ -542,4 +683,5 @@ Documentação oficial:
 
 * **RxDart:** programação reativa e gerenciamento de fluxos;
 * **Dio:** comunicação HTTP e consumo da API REST;
-* **Flutter Modular:** injeção de dependências e gerenciamento de rotas.
+* **Flutter Modular:** injeção de dependências e gerenciamento de rotas;
+* **SqFlite:** banco de dados SQLite local e suporte offline.

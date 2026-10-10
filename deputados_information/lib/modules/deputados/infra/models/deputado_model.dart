@@ -17,7 +17,7 @@ class DeputadoModel extends Deputado {
       nome: map['nome'] as String,
       siglaPartido: map['siglaPartido'] as String,
       siglaUf: map['siglaUf'] as String,
-      uriFoto: map['urlFoto'] as String,
+      uriFoto: (map['urlFoto'] ?? map['uriFoto'] ?? '') as String,
       email: map['email'] as String,
     );
   }

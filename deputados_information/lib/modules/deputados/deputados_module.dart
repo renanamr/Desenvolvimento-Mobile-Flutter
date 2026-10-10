@@ -1,10 +1,13 @@
 import 'package:flutter_modular/flutter_modular.dart';
 
+import '../../services/database_service.dart';
 import 'domain/repositories/interface_deputados_repository.dart';
 import 'domain/usecases/get_deputado_by_id.dart';
 import 'domain/usecases/get_deputados.dart';
+import 'external/datasources/deputados_local_datasource.dart';
 import 'external/datasources/deputados_remote_datasource.dart';
 import 'infra/datasources/interface_deputados_datasource.dart';
+import 'infra/datasources/interface_deputados_local_datasource.dart';
 import 'infra/repositories/deputados_repository_impl.dart';
 import 'presenter/details/deputados_details_bloc.dart';
 import 'presenter/details/deputados_details_screen.dart';
@@ -14,11 +17,20 @@ import 'presenter/list/deputados_list_screen.dart';
 class DeputadosModule extends Module {
   @override
   void binds(Injector i) {
+    // Database Service
+    i.addLazySingleton<DatabaseService>(DatabaseService.new);
+
     // Datasources
     i.addLazySingleton<IDeputadosDataSource>(DeputadosRemoteDataSource.new);
+    i.addLazySingleton<IDeputadosLocalDataSource>(DeputadosLocalDataSource.new);
 
     // Repositories
-    i.addLazySingleton<IDeputadosRepository>(DeputadosRepositoryImpl.new);
+    i.addLazySingleton<IDeputadosRepository>(
+      () => DeputadosRepositoryImpl(
+        remoteDataSource: i.get<IDeputadosDataSource>(),
+        localDataSource: i.get<IDeputadosLocalDataSource>(),
+      ),
+    );
 
     // Usecases
     i.add<IGetDeputados>(GetDeputadosImpl.new);
