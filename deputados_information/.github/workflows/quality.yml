@@ -1,0 +1,39 @@
+name: Quality CI
+
+on:
+  push:
+  pull_request:
+
+
+jobs:
+  quality:
+    name: Code Quality and Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate mocks
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Check analysis options
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
