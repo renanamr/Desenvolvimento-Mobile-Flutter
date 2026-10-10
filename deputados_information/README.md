@@ -5,6 +5,7 @@ Nesse projeto serão trabalhados três conceitos principais no desenvolvimento d
 * **RxDart:** programação reativa e gerenciamento de fluxos;
 * **Dio:** comunicação HTTP e consumo de dados JSON;
 * **Clean Dart:** organização do projeto em camadas e separação de responsabilidades.
+* **Flutter Modular:** injeção de dependências e gerenciamento de rotas.
 
 O aplicativo apresenta uma lista de deputados e permite consultar os detalhes de um deputado específico a partir do seu identificador.
 
@@ -416,6 +417,117 @@ class DeputadosRemoteDataSource implements IDeputadosDataSource {
 }
 ```
 
+#### Verificando andamento...
+Para verificar se seu projeto está igual a este, você pode usar o comando **git** abaixo:
+```bash
+git checkout 1fe97b3
+```
+
+---
+
+## Parte 4 - Injeção de Dependência e Rotas com Flutter Modular
+
+Nesta etapa, o pacote **Flutter Modular** foi integrado para gerenciar a injeção de dependências do projeto e o sistema de roteamento por rotas nomeadas.
+
+### Principais Ganhos
+
+1. **Injeção de Dependências Automática (DI):** Elimina a necessidade de instanciar dependências manualmente na interface ou na função `main`. Todas as classes da cadeia (`DataSource`, `Repository`, `UseCase`, `BLoC`) são resolvidas e injetadas automaticamente pelo contêiner de DI.
+2. **Ciclo de Vida e Gerenciamento de Memória:** O uso de `i.addLazySingleton` garante que as instâncias dos serviços sejam criadas apenas quando necessárias e reutilizadas de forma eficiente.
+3. **Desacoplamento de Rotas:** Substitui navegações imperativas (`Navigator.push`) por navegação nomeada declarativa (`Modular.to.pushNamed`), isolando a construção das telas e o repasse de parâmetros.
+4. **Arquitetura Modularizada:** A estrutura do projeto é dividida em módulos autônomos (`AppModule` e `DeputadosModule`), permitindo escalabilidade e facilidade de manutenção.
+
+---
+
+### Modo de Uso no Projeto
+
+#### 1. Módulo Principal e Configuração Global (`main.dart` e `app_module.dart`)
+
+No `main.dart`, a aplicação é envolvida pelo `ModularApp` configurado com o `AppModule`, e o `MaterialApp.router` passa a utilizar as configurações de rotas do Modular:
+
+```dart
+// main.dart
+void main() {
+  runApp(
+    ModularApp(
+      module: AppModule(),
+      child: const MyApp(),
+    ),
+  );
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      title: 'Deputados',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        useMaterial3: true,
+      ),
+      routerConfig: Modular.routerConfig,
+    );
+  }
+}
+```
+
+#### 2. Registro de Injeções de Dependência e Rotas (`deputados_module.dart`)
+
+No `DeputadosModule`, todos os contratos e suas respectivas implementações são registrados nos `binds`, do `DataSource` até o `BLoC`. As rotas nomeadas são definidas no método `routes`:
+
+```dart
+// modules/deputados/deputados_module.dart
+class DeputadosModule extends Module {
+  @override
+  void binds(Injector i) {
+    // DataSources
+    i.addLazySingleton<IDeputadosDataSource>(DeputadosRemoteDataSource.new);
+
+    // Repositories
+    i.addLazySingleton<IDeputadosRepository>(DeputadosRepositoryImpl.new);
+
+    // UseCases
+    i.addLazySingleton<IGetDeputados>(GetDeputadosImpl.new);
+    i.addLazySingleton<IGetDeputadoById>(GetDeputadoByIdImpl.new);
+
+    // BLoCs
+    i.add<DeputadosBloc>(DeputadosBloc.new);
+    i.add<DeputadoDetailsBloc>(DeputadoDetailsBloc.new);
+  }
+
+  @override
+  void routes(RouteManager r) {
+    r.child(
+      '/',
+      child: (context) => DeputadosListScreen(
+        bloc: Modular.get<DeputadosBloc>(),
+      ),
+    );
+    r.child(
+      '/details',
+      child: (context) => DeputadoDetailsScreen(
+        deputado: r.args.data,
+        bloc: Modular.get<DeputadoDetailsBloc>(),
+      ),
+    );
+  }
+}
+```
+
+#### 3. Navegação Nomeada
+
+Nas telas do aplicativo, a navegação entre telas é realizada com o `Modular.to.pushNamed`:
+
+```dart
+// Navegação para a tela de detalhes enviando o objeto 'deputado' como argumento
+Modular.to.pushNamed(
+  '/details',
+  arguments: deputados[index],
+);
+```
+
 ---
 
 ## Fonte dos dados
@@ -429,4 +541,5 @@ Documentação oficial:
 ## Dependências principais
 
 * **RxDart:** programação reativa e gerenciamento de fluxos;
-* **Dio:** comunicação HTTP e consumo da API REST.
+* **Dio:** comunicação HTTP e consumo da API REST;
+* **Flutter Modular:** injeção de dependências e gerenciamento de rotas.

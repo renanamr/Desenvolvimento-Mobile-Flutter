@@ -1,8 +1,8 @@
 import 'package:deputados_information/modules/deputados/domain/entities/deputado.dart';
-import 'package:deputados_information/modules/deputados/presenter/details/deputados_details_screen.dart';
 import 'package:deputados_information/modules/deputados/presenter/list/deputados_list_bloc.dart';
 import 'package:deputados_information/modules/deputados/presenter/widget/deputado_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 class DeputadosListScreen extends StatefulWidget {
   final DeputadosBloc bloc;
@@ -41,7 +41,7 @@ class _DeputadosListScreenState extends State<DeputadosListScreen> {
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(
-              child: Text('Erro: ${snapshot.error}',),
+              child: Text('Erro: ${snapshot.error}'),
             );
           }
 
@@ -60,13 +60,9 @@ class _DeputadosListScreenState extends State<DeputadosListScreen> {
               return DeputadoCard(
                 deputado: deputados[index],
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => DeputadoDetailsScreen(
-                        deputado: deputados[index],
-                      ),
-                    ),
+                  Modular.to.pushNamed(
+                    '/details',
+                    arguments: deputados[index],
                   );
                 },
               );

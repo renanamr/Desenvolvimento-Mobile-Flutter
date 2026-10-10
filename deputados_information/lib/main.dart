@@ -1,35 +1,22 @@
-import 'package:deputados_information/modules/deputados/domain/usecases/get_deputados.dart';
-import 'package:deputados_information/modules/deputados/external/datasources/deputados_remote_datasource.dart';
-import 'package:deputados_information/modules/deputados/infra/repositories/deputados_repository_impl.dart';
-import 'package:deputados_information/modules/deputados/presenter/list/deputados_list_bloc.dart';
-import 'package:deputados_information/modules/deputados/presenter/list/deputados_list_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
+import 'app_module.dart';
 
 void main() {
-  final dataSource = DeputadosRemoteDataSource();
-  final repository = DeputadosRepositoryImpl(dataSource: dataSource);
-  final usecase = GetDeputadosImpl(repository: repository);
-
-  final bloc = DeputadosBloc(
-    listarDeputados: usecase,
-  );
-
   runApp(
-    MyApp(bloc: bloc),
+    ModularApp(
+      module: AppModule(),
+      child: const MyApp(),
+    ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  final DeputadosBloc bloc;
-
-  const MyApp({
-    super.key,
-    required this.bloc,
-  });
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'Deputados',
       theme: ThemeData(
@@ -38,9 +25,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: DeputadosListScreen(
-        bloc: bloc,
-      ),
+      routerConfig: Modular.routerConfig,
     );
   }
 }

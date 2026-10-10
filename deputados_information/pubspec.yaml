@@ -32,8 +32,9 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
+  flutter_modular: ^6.3.2
+  dio: ^5.4.0
   rxdart:
-  dio:
 
 dev_dependencies:
   flutter_test:

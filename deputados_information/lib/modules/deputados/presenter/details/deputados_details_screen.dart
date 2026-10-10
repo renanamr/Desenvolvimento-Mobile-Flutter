@@ -1,9 +1,7 @@
-import 'package:deputados_information/modules/deputados/domain/usecases/get_deputado_by_id.dart';
-import 'package:deputados_information/modules/deputados/external/datasources/deputados_remote_datasource.dart';
-import 'package:deputados_information/modules/deputados/infra/repositories/deputados_repository_impl.dart';
 import 'package:deputados_information/modules/deputados/presenter/details/deputados_details_bloc.dart';
 import 'package:deputados_information/utils/deputado_details_state.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 import '../../domain/entities/deputado.dart';
 
 class DeputadoDetailsScreen extends StatefulWidget {
@@ -28,15 +26,7 @@ class _DeputadoDetailsScreenState extends State<DeputadoDetailsScreen> {
   void initState() {
     super.initState();
 
-    if (widget.bloc != null) {
-      bloc = widget.bloc!;
-    } else {
-      final dataSource = DeputadosRemoteDataSource();
-      final repository = DeputadosRepositoryImpl(dataSource: dataSource);
-      final usecase = GetDeputadoByIdImpl(repository: repository);
-      bloc = DeputadoDetailsBloc(obterDeputadoPorId: usecase);
-    }
-
+    bloc = widget.bloc ?? Modular.get<DeputadoDetailsBloc>();
     bloc.carregar(widget.deputado);
   }
 
